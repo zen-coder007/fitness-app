@@ -67,30 +67,35 @@ function App() {
   };
 
   // 👤 PROFILE + PLAN
-  const getProfile = async () => {
-    const res = await fetch(`${API}/api/user/profile`, {
-      headers: tokenHeader()
-    });
+ const getProfile = async () => {
+  const res = await fetch(`${API}/api/user/profile`, {
+    headers: tokenHeader()
+  });
 
-    const data = await res.json();
-    const u = data.user;
-    setUser(u);
+  const data = await res.json();
+  const u = data.user || data;
 
-    if (u?.weight && u?.height) {
-      const planRes = await fetch(`${API}/api/plan`, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({
-          weight: u.weight,
-          height: u.height
-        })
-      });
+  setUser(u);
 
-      const planData = await planRes.json();
-      setPlan(planData);
-    }
-  };
+  // 🔥 ALWAYS CALL PLAN (IMPORTANT)
+  const planRes = await fetch(`${API}/api/plan`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      goal: u.goal,
+      weight: u.weight,
+      height: u.height
+    })
+  });
 
+  const planData = await planRes.json();
+
+  console.log("PLAN DATA:", planData); // 👈 check console
+
+  setPlan(planData);
+}; 
   // 📊 DASHBOARD
   const getDashboard = async () => {
     const res = await fetch(`${API}/api/user/dashboard`, {
@@ -193,22 +198,50 @@ function App() {
         )}
 
         {/* 🔥 FULL FITNESS PLAN */}
-        {plan && (
-          <div style={styles.card}>
-            <h3>📊 BMI: {plan.bmi}</h3>
-            <h3>🎯 Goal: {plan.goal}</h3>
-            <h3>🔥 Calories: {plan.calories}</h3>
-            <h3>💧 Water: {plan.waterTarget} L</h3>
+      {plan && (
+  <div style={styles.card}>
+    <h2>📊 BMI: {plan.bmi}</h2>
+    <h3>🔥 Calories: {plan.calories}</h3>
+    <h3>💧 Water Target: {plan.waterTarget} L</h3>
 
-            <p><b>🥗 Diet:</b> {plan.diet.join(", ")}</p>
-            <p><b>❌ Avoid Food:</b> {plan.avoidFoods.join(", ")}</p>
+    <hr />
 
-            <p><b>🏋️ Workout:</b> {plan.workout.join(", ")}</p>
-            <p><b>🚫 Avoid Exercise:</b> {plan.exerciseAvoid.join(", ")}</p>
+    <h3>🥗 Diet Plan</h3>
+    <ul>
+      {plan.diet?.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
 
-            <p><b>📅 Gym Plan:</b> {plan.gymPlan.join(" | ")}</p>
-          </div>
-        )}
+    <h3>🏋️ Workout</h3>
+    <ul>
+      {plan.workout?.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+
+    <h3>❌ Avoid Food</h3>
+    <ul>
+      {plan.avoid?.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+
+    <h3>🚫 Avoid Exercise</h3>
+    <ul>
+      {plan.exerciseAvoid?.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+
+    <h3>📅 Weekly Gym Plan</h3>
+    <ul>
+      {plan.gymPlan?.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+  </div>
+)}
 
         {/* GRID */}
         <div style={styles.grid}>
