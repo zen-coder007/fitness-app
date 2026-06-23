@@ -17,6 +17,7 @@ router.get("/profile", authMiddleware, async (req, res) => {
     res.json({ user });
 
   } catch (err) {
+    console.log(err);
     res.status(500).json({ message: "Error fetching user ❌" });
   }
 });
@@ -39,6 +40,7 @@ router.get("/dashboard", authMiddleware, async (req, res) => {
     });
 
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Server error ❌" });
   }
 });
@@ -49,12 +51,7 @@ router.post("/water", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found ❌" });
-    }
-
-    // 🔥 FIX: default amount
-    const amount = req.body.amount || 0.5;
+    const amount = Number(req.body.amount) || 0.5;
 
     user.water = (user.water || 0) + amount;
 
@@ -77,12 +74,7 @@ router.post("/calories", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found ❌" });
-    }
-
-    // 🔥 FIX: default amount
-    const amount = req.body.amount || 100;
+    const amount = Number(req.body.amount) || 100;
 
     user.calories = (user.calories || 0) + amount;
 
@@ -112,6 +104,7 @@ router.post("/goal", authMiddleware, async (req, res) => {
     const user = await User.findById(req.user.id);
 
     user.goal = goal;
+
     await user.save();
 
     res.json({
@@ -120,6 +113,7 @@ router.post("/goal", authMiddleware, async (req, res) => {
     });
 
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Server error ❌" });
   }
 });
@@ -134,31 +128,36 @@ router.post("/reset", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "User not found ❌" });
     }
 
-    // 🔥 SAVE HISTORY
+    const today = new Date();
+
+    // 🔥 SAVE HISTORY (force timestamp)
     await History.create({
       userId: user._id.toString(),
       water: user.water || 0,
       calories: user.calories || 0,
-      goal: user.goal || ""
+      goal: user.goal || "",
+      createdAt: today
     });
 
-    // 🔥 STREAK LOGIC
-    const today = new Date();
-    const last = user.lastActive;
+    // 🔥 FIXED STREAK LOGIC
+    if (user.lastActive) {
+      const last = new Date(user.lastActive);
 
-    if (last) {
-      const diff = Math.floor((today - last) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.floor(
+        (today.setHours(0,0,0,0) - last.setHours(0,0,0,0)) /
+        (1000 * 60 * 60 * 24)
+      );
 
-      if (diff === 1) {
+      if (diffDays === 1) {
         user.streak = (user.streak || 0) + 1;
-      } else if (diff > 1) {
+      } else if (diffDays > 1) {
         user.streak = 1;
       }
     } else {
       user.streak = 1;
     }
 
-    user.lastActive = today;
+    user.lastActive = new Date();
 
     // 🔄 RESET VALUES
     user.water = 0;
@@ -203,10 +202,10 @@ router.post("/update", authMiddleware, async (req, res) => {
 
     const user = await User.findById(req.user.id);
 
-    if (weight) user.weight = weight;
-    if (height) user.height = height;
-    if (age) user.age = age;
-    if (goal) user.goal = goal;
+    if (weight !== undefined) user.weight = weight;
+    if (height !== undefined) user.height = height;
+    if (age !== undefined) user.age = age;
+    if (goal !== undefined) user.goal = goal;
 
     await user.save();
 
@@ -216,6 +215,7 @@ router.post("/update", authMiddleware, async (req, res) => {
     });
 
   } catch (error) {
+    console.log(error);
     res.status(500).json({ message: "Server error ❌" });
   }
 });

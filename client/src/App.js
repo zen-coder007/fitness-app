@@ -41,6 +41,7 @@ function App() {
     getHistory();
   };
 
+  // 🔐 LOGIN
   const handleLogin = async () => {
     const res = await fetch(`${API}/api/auth/login`, {
       method: "POST",
@@ -59,38 +60,38 @@ function App() {
     }
   };
 
+  // 🔓 LOGOUT
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
   };
 
+  // 👤 PROFILE + PLAN
   const getProfile = async () => {
     const res = await fetch(`${API}/api/user/profile`, {
       headers: tokenHeader()
     });
 
     const data = await res.json();
-    const u = data.user || data;
+    const u = data.user;
     setUser(u);
 
-    if (u.weight && u.height) {
-      const bmi = (u.weight / ((u.height / 100) ** 2)).toFixed(1);
-
-      let goal = "maintain";
-      if (bmi < 18.5) goal = "weight gain";
-      else if (bmi > 25) goal = "weight loss";
-
+    if (u?.weight && u?.height) {
       const planRes = await fetch(`${API}/api/plan`, {
         method: "POST",
         headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ goal, weight: u.weight, height: u.height })
+        body: JSON.stringify({
+          weight: u.weight,
+          height: u.height
+        })
       });
 
       const planData = await planRes.json();
-      setPlan({ ...planData, bmi });
+      setPlan(planData);
     }
   };
 
+  // 📊 DASHBOARD
   const getDashboard = async () => {
     const res = await fetch(`${API}/api/user/dashboard`, {
       headers: tokenHeader()
@@ -101,6 +102,7 @@ function App() {
     setCalories(data.calories || 0);
   };
 
+  // 📜 HISTORY
   const getHistory = async () => {
     const res = await fetch(`${API}/api/user/history`, {
       headers: tokenHeader()
@@ -110,6 +112,7 @@ function App() {
     setHistory(data.history || []);
   };
 
+  // 💧 WATER
   const addWater = async () => {
     const res = await fetch(`${API}/api/user/water`, {
       method: "POST",
@@ -121,6 +124,7 @@ function App() {
     setWater(data.totalWater);
   };
 
+  // 🍗 CALORIES
   const addCalories = async () => {
     const res = await fetch(`${API}/api/user/calories`, {
       method: "POST",
@@ -132,6 +136,7 @@ function App() {
     setCalories(data.totalCalories);
   };
 
+  // 🔄 SAVE DAY
   const saveDay = async () => {
     await fetch(`${API}/api/user/reset`, {
       method: "POST",
@@ -142,14 +147,18 @@ function App() {
     alert("Day Saved ✅");
   };
 
+  // 📈 GRAPH
   const chartData = {
-    labels: history.map(h => new Date(h.createdAt).toLocaleDateString()),
+    labels: history.map(h =>
+      new Date(h.createdAt).toLocaleDateString()
+    ),
     datasets: [
       { label: "Water", data: history.map(h => h.water) },
       { label: "Calories", data: history.map(h => h.calories) }
     ]
   };
 
+  // 🔐 LOGIN UI
   if (!isLoggedIn) {
     return (
       <div style={styles.container}>
@@ -163,6 +172,7 @@ function App() {
     );
   }
 
+  // ✅ MAIN UI
   return (
     <div style={styles.container}>
       <div style={styles.dashboard}>
@@ -182,13 +192,21 @@ function App() {
           </div>
         )}
 
-        {/* PLAN */}
+        {/* 🔥 FULL FITNESS PLAN */}
         {plan && (
           <div style={styles.card}>
             <h3>📊 BMI: {plan.bmi}</h3>
+            <h3>🎯 Goal: {plan.goal}</h3>
             <h3>🔥 Calories: {plan.calories}</h3>
-            <p>🥗 Diet: {plan.diet.join(", ")}</p>
-            <p>🏋️ Workout: {plan.workout.join(", ")}</p>
+            <h3>💧 Water: {plan.waterTarget} L</h3>
+
+            <p><b>🥗 Diet:</b> {plan.diet.join(", ")}</p>
+            <p><b>❌ Avoid Food:</b> {plan.avoidFoods.join(", ")}</p>
+
+            <p><b>🏋️ Workout:</b> {plan.workout.join(", ")}</p>
+            <p><b>🚫 Avoid Exercise:</b> {plan.exerciseAvoid.join(", ")}</p>
+
+            <p><b>📅 Gym Plan:</b> {plan.gymPlan.join(" | ")}</p>
           </div>
         )}
 
@@ -217,7 +235,11 @@ function App() {
         {/* GRAPH */}
         <div style={styles.card}>
           <h3>📈 Progress</h3>
-          {history.length > 0 ? <Line data={chartData} /> : <p>No data yet</p>}
+          {history.length > 0 ? (
+            <Line data={chartData} />
+          ) : (
+            <p>No data yet</p>
+          )}
         </div>
 
       </div>
