@@ -16,6 +16,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegister, setIsRegister] = useState(false);
 
   const [user, setUser] = useState(null);
   const [water, setWater] = useState(0);
@@ -61,6 +62,24 @@ function App() {
       alert(data.message);
     }
   };
+  const handleRegister = async () => {
+  const res = await fetch(`${API}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      password,
+      name: "User"
+    })
+  });
+
+  const data = await res.json();
+
+  if (data.message) {
+    alert("Registered ✅ अब login करो");
+    setIsRegister(false);
+  }
+};
 
   // 🔓 LOGOUT
   const handleLogout = () => {
@@ -195,17 +214,43 @@ function App() {
 
   // 🔐 LOGIN UI
   if (!isLoggedIn) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <h2>Login</h2>
-          <input style={styles.input} placeholder="Email" onChange={e=>setEmail(e.target.value)} />
-          <input style={styles.input} type="password" placeholder="Password" onChange={e=>setPassword(e.target.value)} />
-          <button style={styles.button} onClick={handleLogin}>Login</button>
-        </div>
+  return (
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h2>{isRegister ? "📝 Register" : "🔐 Login"}</h2>
+
+        <input
+          style={styles.input}
+          placeholder="Email"
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <input
+          style={styles.input}
+          type="password"
+          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button
+          style={styles.button}
+          onClick={isRegister ? handleRegister : handleLogin}
+        >
+          {isRegister ? "Register" : "Login"}
+        </button>
+
+        <p
+          style={{ cursor: "pointer", marginTop: "10px" }}
+          onClick={() => setIsRegister(!isRegister)}
+        >
+          {isRegister
+            ? "Already have account? Login"
+            : "Don't have account? Register"}
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // 🔥 FORM UI
   if (showForm) {
