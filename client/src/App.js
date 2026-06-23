@@ -76,7 +76,7 @@ function App() {
   const data = await res.json();
 
   if (data.message) {
-    alert("Registered ✅ अब login करो");
+    alert("Registered ✅ go to login");
     setIsRegister(false);
   }
 };
