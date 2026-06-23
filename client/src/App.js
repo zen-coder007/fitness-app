@@ -13,10 +13,7 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement);
 const API = "https://fitness-backend-94sx.onrender.com";
 
 function App() {
-
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isRegister, setIsRegister] = useState(false);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -25,6 +22,7 @@ function App() {
   const [calories, setCalories] = useState(0);
   const [history, setHistory] = useState([]);
   const [plan, setPlan] = useState(null);
+
   const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
@@ -49,7 +47,7 @@ function App() {
   const handleLogin = async () => {
     const res = await fetch(`${API}/api/auth/login`, {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password })
     });
 
@@ -64,31 +62,13 @@ function App() {
     }
   };
 
-  // 📝 REGISTER
-  const handleRegister = async () => {
-    const res = await fetch(`${API}/api/auth/register`, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        email,
-        password,
-        name: "User"
-      })
-    });
-
-    const data = await res.json();
-
-    alert(data.message || "Registered ✅");
-    setIsRegister(false);
-  };
-
   // 🔓 LOGOUT
   const handleLogout = () => {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
   };
 
-  // 👤 PROFILE + PLAN
+  // 👤 PROFILE + PLAN (🔥 FIXED)
   const getProfile = async () => {
     const res = await fetch(`${API}/api/user/profile`, {
       headers: tokenHeader()
@@ -99,26 +79,40 @@ function App() {
 
     setUser(u);
 
-    if (!u.weight || !u.height) {
+    // 🔥 IF DATA MISSING → FORM
+    if (!u.weight || !u.height || u.weight === 0 || u.height === 0) {
       setShowForm(true);
       return;
     }
 
+    // 🔥 AUTO BMI
+    const bmi = u.weight / ((u.height / 100) * (u.height / 100));
+
+    let autoGoal = "maintain";
+    if (bmi < 18.5) autoGoal = "weight gain";
+    else if (bmi > 25) autoGoal = "weight loss";
+
+    // 🔥 PLAN CALL
     const planRes = await fetch(`${API}/api/plan`, {
       method: "POST",
-      headers: {"Content-Type":"application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        goal: u.goal,
-        weight: u.weight,
-        height: u.height
+        goal: autoGoal,
+        weight: Number(u.weight),
+        height: Number(u.height)
       })
     });
 
     const planData = await planRes.json();
-    setPlan(planData);
+
+    setPlan({
+      ...planData,
+      bmi: bmi.toFixed(1),
+      goal: autoGoal
+    });
   };
 
-  // 🔥 SAVE DETAILS
+  // 🔥 SAVE DETAILS (FIXED)
   const saveDetails = async () => {
     await fetch(`${API}/api/user/update`, {
       method: "POST",
@@ -126,13 +120,19 @@ function App() {
         "Content-Type": "application/json",
         ...tokenHeader()
       },
-      body: JSON.stringify(user)
+      body: JSON.stringify({
+        weight: Number(user.weight),
+        height: Number(user.height),
+        age: Number(user.age),
+        goal: user.goal
+      })
     });
 
     setShowForm(false);
     loadAll();
   };
 
+  // 📊 DASHBOARD
   const getDashboard = async () => {
     const res = await fetch(`${API}/api/user/dashboard`, {
       headers: tokenHeader()
@@ -142,6 +142,7 @@ function App() {
     setCalories(data.calories || 0);
   };
 
+  // 📜 HISTORY
   const getHistory = async () => {
     const res = await fetch(`${API}/api/user/history`, {
       headers: tokenHeader()
@@ -150,26 +151,29 @@ function App() {
     setHistory(data.history || []);
   };
 
+  // 💧 WATER
   const addWater = async () => {
     const res = await fetch(`${API}/api/user/water`, {
       method: "POST",
-      headers: {"Content-Type":"application/json", ...tokenHeader()},
+      headers: { "Content-Type": "application/json", ...tokenHeader() },
       body: JSON.stringify({ amount: 0.5 })
     });
     const data = await res.json();
     setWater(data.totalWater);
   };
 
+  // 🍗 CALORIES
   const addCalories = async () => {
     const res = await fetch(`${API}/api/user/calories`, {
       method: "POST",
-      headers: {"Content-Type":"application/json", ...tokenHeader()},
+      headers: { "Content-Type": "application/json", ...tokenHeader() },
       body: JSON.stringify({ amount: 100 })
     });
     const data = await res.json();
     setCalories(data.totalCalories);
   };
 
+  // 🔄 SAVE DAY
   const saveDay = async () => {
     await fetch(`${API}/api/user/reset`, {
       method: "POST",
@@ -180,57 +184,44 @@ function App() {
   };
 
   const chartData = {
-    labels: history.map(h => new Date(h.createdAt).toLocaleDateString()),
+    labels: history.map(h =>
+      new Date(h.createdAt).toLocaleDateString()
+    ),
     datasets: [
       { label: "Water", data: history.map(h => h.water) },
       { label: "Calories", data: history.map(h => h.calories) }
     ]
   };
 
-  // 🔐 LOGIN / REGISTER UI
+  // 🔐 LOGIN UI
   if (!isLoggedIn) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
-          <h2>{isRegister ? "Register" : "Login"}</h2>
-
+          <h2>Login</h2>
           <input style={styles.input} placeholder="Email" onChange={e=>setEmail(e.target.value)} />
           <input style={styles.input} type="password" placeholder="Password" onChange={e=>setPassword(e.target.value)} />
-
-          <button style={styles.button} onClick={isRegister ? handleRegister : handleLogin}>
-            {isRegister ? "Register" : "Login"}
-          </button>
-
-          <p style={{cursor:"pointer"}} onClick={()=>setIsRegister(!isRegister)}>
-            {isRegister ? "Already have account? Login" : "Don't have account? Register"}
-          </p>
+          <button style={styles.button} onClick={handleLogin}>Login</button>
         </div>
       </div>
     );
   }
 
-  // 🔥 FITNESS FORM
-  if (showForm && user) {
+  // 🔥 FORM UI
+  if (showForm) {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
           <h2>Enter Fitness Details</h2>
 
-          <input style={styles.input} placeholder="Weight"
-            onChange={e=>setUser({...user, weight:e.target.value})} />
+          <input placeholder="Weight" style={styles.input}
+            onChange={(e)=>setUser({...user, weight:e.target.value})} />
 
-          <input style={styles.input} placeholder="Height"
-            onChange={e=>setUser({...user, height:e.target.value})} />
+          <input placeholder="Height" style={styles.input}
+            onChange={(e)=>setUser({...user, height:e.target.value})} />
 
-          <input style={styles.input} placeholder="Age"
-            onChange={e=>setUser({...user, age:e.target.value})} />
-
-          <select style={styles.input}
-            onChange={e=>setUser({...user, goal:e.target.value})}>
-            <option>Select Goal</option>
-            <option value="weight loss">Weight Loss</option>
-            <option value="weight gain">Weight Gain</option>
-          </select>
+          <input placeholder="Age" style={styles.input}
+            onChange={(e)=>setUser({...user, age:e.target.value})} />
 
           <button style={styles.button} onClick={saveDetails}>
             Save Details
@@ -240,13 +231,13 @@ function App() {
     );
   }
 
-  // 🏠 DASHBOARD
+  // ✅ MAIN UI
   return (
     <div style={styles.container}>
       <div style={styles.dashboard}>
 
         <div style={styles.header}>
-          <h2>💪 Fitness Dashboard</h2>
+          <h2>Fitness Dashboard</h2>
           <button style={styles.logout} onClick={handleLogout}>Logout</button>
         </div>
 
@@ -254,22 +245,28 @@ function App() {
           <div style={styles.card}>
             <h3>{user.name}</h3>
             <p>{user.email}</p>
-            <p>🔥 Streak: {user.streak}</p>
+            <p>Streak: {user.streak}</p>
           </div>
         )}
 
-        {plan && (
+        {plan && plan.diet && (
           <div style={styles.card}>
             <h2>BMI: {plan.bmi}</h2>
-            <p>Calories: {plan.calories}</p>
-            <p>Water Target: {plan.waterTarget}L</p>
+            <h3>Calories: {plan.calories}</h3>
+            <h3>Water Target: {plan.waterTarget} L</h3>
+
+            <h3>Diet</h3>
+            <ul>{plan.diet.map((d,i)=><li key={i}>{d}</li>)}</ul>
+
+            <h3>Workout</h3>
+            <ul>{plan.workout.map((d,i)=><li key={i}>{d}</li>)}</ul>
           </div>
         )}
 
         <div style={styles.grid}>
           <div style={styles.card}>
             <h3>Water</h3>
-            <h2>{water}L</h2>
+            <h2>{water} L</h2>
             <button style={styles.smallBtn} onClick={addWater}>+0.5</button>
           </div>
 
@@ -281,12 +278,14 @@ function App() {
         </div>
 
         <div style={styles.card}>
-          <button style={styles.button} onClick={saveDay}>Save Day</button>
+          <button style={styles.button} onClick={saveDay}>
+            Save Day
+          </button>
         </div>
 
         <div style={styles.card}>
           <h3>Progress</h3>
-          {history.length > 0 ? <Line data={chartData}/> : "No data"}
+          {history.length > 0 ? <Line data={chartData} /> : <p>No data</p>}
         </div>
 
       </div>
